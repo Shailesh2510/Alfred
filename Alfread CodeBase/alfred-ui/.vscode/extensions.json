@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "sonarsource.sonarlint-vscode",
+    "Gruntfuggly.todo-tree",
+    "aaron-bond.better-comments",
+    "alefragnani.Bookmarks",
+    "BracketPairColorDLW.bracket-pair-color-dlw",
+    "streetsidesoftware.code-spell-checker",
+    "eamodio.gitlens",
+    "burkeholland.simple-react-snippets",
+    "WallabyJs.quokka-vscode"
+  ]
+}

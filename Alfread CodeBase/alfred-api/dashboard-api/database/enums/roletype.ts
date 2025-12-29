@@ -1,0 +1,5 @@
+export enum RoleType {
+  TENANT_ROLE = 'TENANT_ROLE',
+  HOTEL_ROLE = 'HOTEL_ROLE',
+  MERCHANT_ROLE = 'MERCHANT_ROLE',
+}

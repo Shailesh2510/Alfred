@@ -1,0 +1,23 @@
+name: Run Tests (Dashboard API)
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-dashboard-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./dashboard-api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16.x"
+      - name: Install Node Dependencies
+        run: npm ci
+      - name: Run Tests
+        run: npm run test
+  

@@ -1,0 +1,287 @@
+service: order-serviceframeworkVersion: "3"
+configValidationMode: error
+useDotenv: true
+deprecationNotificationMode: warn:summary
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:sendmessage
+            - secretsmanager:GetSecretValue
+          Resource: "*"
+
+plugins:
+  - serverless-domain-manager
+
+custom:
+  stageDomain:
+    prod: "open.getalfred.com"
+    dev: "dev.open.getalfred.com"
+  customDomain:
+    domainName: ${self:custom.stageDomain.${opt:stage, self:provider.stage, 'dev'}}
+    # basePath: "api"
+    stage: ${opt:stage}
+    createRoute53Record: false
+    endpointType: "regional"
+    CertificateArn:
+      Fn::If:
+        - IsProdStage
+        - open.getalfred.com
+        - ${opt:stage}.open.getalfred.com
+
+package:
+  patterns:
+    - "!./*"
+    - dist
+    - node_modules
+
+functions:
+  getCityTime:
+    handler: dist/index.getCityTime
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: city/{uuid}
+          method: GET
+          cors: true
+  getHotelPMSGuest:
+    handler: dist/index.getHotelPMSGuest
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: guest/{webCode}/{lastName}/{roomNumber}
+          method: GET
+          cors: true
+  getVoucherCode:
+    handler: dist/index.getVoucherCode
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: voucher-code/{code}/hotel/{uuid}
+          method: GET
+          cors: true
+  createOrder:
+    handler: dist/index.createOrder
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: order
+          method: POST
+          cors: true
+  getOrderStatus:
+    handler: dist/index.getOrderStatus
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: order/{nonce}
+          method: GET
+          cors: true
+  refundVoucherAmount:
+    handler: dist/index.refundVoucherAmount
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: refund-voucher/order/{orderId}
+          method: PUT
+          cors: true
+  initPayment:
+    handler: dist/index.initPayment
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: payment/init
+          method: POST
+          cors: true
+  getMerchantsByHotel:
+    handler: dist/index.getMerchantsByHotel
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: merchants/hotel/{webCode}
+          method: GET
+          cors: true
+  getDeliveryFees:
+    handler: dist/index.getDeliveryFees
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: shipday/get-delivery-fees/{hotelId}/{merchantId}
+          method: GET
+          cors: true
+  getAvailableRideOptions:
+    handler: dist/index.getAvailableRideOptions
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: carmel/get-price-list/{hotelId}
+          method: POST
+          cors: true
+  createCarmelTrip:
+    handler: dist/index.createCarmelTrip
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: carmel/create-trip/{hotelId}
+          method: POST
+          cors: true
+  getDeliveryQuote:
+    handler: dist/index.getDeliveryQuote
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: relay/quote
+          method: GET
+          cors: true
+  getAssociatedMealPeriodsByMerchantId:
+    handler: dist/index.getAssociatedMealPeriodsByMerchantId
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: mealperiods/merchant/{merchantId}
+          method: GET
+          cors: true
+  cancelOrder:
+    handler: dist/index.cancelOrder
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: cancel/order/{orderId}
+          method: POST
+          cors: true
+  sendSMS:
+    handler: dist/index.sendSMS
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}
+    events:
+      - http:
+          path: sms
+          method: POST
+          cors: true
+
+resources:
+  Conditions:
+    IsProdStage: !Equals ["${opt:stage}", "prod"]
+  Resources:
+    # Messages:
+    #   Type: AWS::SQS::Queue
+    #   Properties:
+    #     QueueName: ${self:provider.stage}-${self:service}-queue
+    #     MessageRetentionPeriod: 604800 #7days
+    #     VisibilityTimeout: 60
+    #     RedrivePolicy:
+    #       deadLetterTargetArn:
+    #         Fn::GetAtt:
+    #         - OrdersDeadLetterQueue
+    #         - Arn
+    #       maxReceiveCount: 10
+
+    # OrdersDeadLetterQueue:
+    #   Type: AWS::SQS::Queue
+    #   Properties:
+    #     QueueName: ${self:provider.stage}-${self:service}-dead-letter-queue
+    #     MessageRetentionPeriod: 604800 #7days
+
+    AlfredMenuBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${opt:stage}-alfredmenu-bucket
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - GET
+                - HEAD
+              AllowedOrigins:
+                - "*"
+              AllowedHeaders:
+                - "*"
+              ExposedHeaders:
+                - "ETag"
+                - "Access-Control-Allow-Origin"
+            - AllowedMethods:
+                - GET
+                - HEAD
+                - PUT
+                - POST
+              AllowedOrigins:
+                - "https://getalfred.com"
+                - "https://www.getalfred.com"
+                - "https://www.admin.getalfred.com"
+                - "https://admin.getalfred.com"
+                - "https://www.hotel.getalfred.com"
+                - "https://hotel.getalfred.com"
+                - "https://www.merchant.getalfred.com"
+                - "https://merchant.getalfred.com"
+              AllowedHeaders:
+                - "*"
+              ExposedHeaders:
+                - "ETag"
+                - "Access-Control-Allow-Origin"
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          IgnorePublicAcls: false
+          BlockPublicPolicy: false
+          RestrictPublicBuckets: false
+
+    AlfredMenuBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref AlfredMenuBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: "*"
+              Action:
+                - "s3:GetObject"
+              Resource:
+                - Fn::Sub: "arn:aws:s3:::${opt:stage}-alfredmenu-bucket/*"

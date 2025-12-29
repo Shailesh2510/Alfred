@@ -1,0 +1,120 @@
+name: Dashboard API CD
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "dashboard-api/**"
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  build:
+    env:
+      Env: ${{ github.event.inputs.env || 'dev' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - uses: actions/checkout@v2
+      - name: Set AWS credentials
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo 'Set AWS env vars correctly'
+
+      - name: Load AWS secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        with:
+          secret-ids: |
+            DEV_KEYS, ${{ env.Env }}/encrypted-keys
+            DEV_DB, ${{ env.Env }}/encrypted-db
+          parse-json-secrets: true
+
+      - uses: actions/checkout@v2
+      - name: Build the Docker image
+        working-directory: ./dashboard-api
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo 'Create env file'
+          touch .env
+          echo NODE_ENV=${{ env.Env }} >> .env
+
+          echo DASHBOARD_KEYS="{\"keys\":$DEV_KEYS_DASHBOARD_KEYS_KEYS}" >> .env
+          echo GUEST_KEYS="{\"keys\":$DEV_KEYS_GUEST_KEYS_KEYS}" >> .env
+          echo DASHBOARD_POOL_CLIENT_ID=$DEV_KEYS_DASHBOARD_POOL_CLIENT_ID >> .env
+          echo DASHBOARD_POOL_ID=$DEV_KEYS_DASHBOARD_POOL_ID >> .env
+
+          echo DB_TYPE=$DEV_DB_ENGINE >> .env
+          echo DB_HOST=$DEV_DB_HOST >> .env
+          echo DB_PORT=$DEV_DB_PORT >> .env
+
+          echo DB_USERNAME=$DEV_DB_USERNAME >> .env
+          echo DB_PASSWORD=$DEV_DB_PASSWORD >> .env
+          echo DB_DATABASE=$DEV_DB_DBNAME >> .env
+          echo PUSHER_APP_ID=$DEV_KEYS_PUSHER_APP_ID >> .env
+          echo PUSHER_KEY=$DEV_KEYS_PUSHER_KEY >> .env
+          echo PUSHER_SECRET=$DEV_KEYS_PUSHER_SECRET >> .env
+          echo PUSHER_CLUSTER=$DEV_KEYS_PUSHER_CLUSTER >> .env
+          echo PUSHER_USE_TLS=$DEV_KEYS_PUSHER_USE_TLS >> .env
+          echo REDIS_HOST=$DEV_KEYS_REDIS_HOST >> .env
+          echo REDIS_PORT=$DEV_KEYS_REDIS_PORT >> .env
+          echo REDIS_USERNAME=$DEV_KEYS_REDIS_USERNAME >> .env
+          echo REDIS_PASSWORD=$DEV_KEYS_REDIS_PASSWORD >> .env
+          echo STRIPE_API_KEY=$DEV_KEYS_STRIPE_API_KEY >> .env
+          echo STRIPE_WEBHOOK_SECRET=$DEV_KEYS_STRIPE_WEBHOOK_SECRET >> .env
+          echo TWILIO_ACCOUNT_SID=$DEV_KEYS_TWILIO_ACCOUNT_SID >> .env
+          echo TWILIO_AUTH_TOKEN=$DEV_KEYS_TWILIO_AUTH_TOKEN >> .env
+          echo TWILIO_SMS_FROM_NUMBER=$DEV_KEYS_TWILIO_SMS_FROM_NUMBER >> .env
+          echo RELAY_API_KEY_V2=$DEV_KEYS_RELAY_API_KEY_V2 >> .env
+          echo MAILGUN_API_KEY=$DEV_KEYS_MAILGUN_API_KEY >> .env
+          echo CLICKSEND_API_USERNAME=$DEV_KEYS_CLICKSEND_API_USERNAME >> .env
+          echo CLICKSEND_API_PASSWORD=$DEV_KEYS_CLICKSEND_API_PASSWORD >> .env
+          echo SHIPDAY_API_KEY=$DEV_KEYS_SHIPDAY_API_KEY >> .env
+          echo AWS_ACCESS_KEY_ID=$DEV_KEYS_AWS_ACCESS_KEY_ID >> .env
+          echo AWS_SECRET_ACCESS_KEY=$DEV_KEYS_AWS_SECRET_ACCESS_KEY >> .env
+          echo AWS_APP_CONFIG_APPLICATION_ID=$DEV_KEYS_AWS_APP_CONFIG_APPLICATION_ID >> .env
+          echo AWS_APP_CONFIG_ENVIRONMENT_ID=$DEV_KEYS_AWS_APP_CONFIG_ENVIRONMENT_ID >> .env
+          echo AWS_APP_CONFIG_CONFIGURATION_PROFILE_ID=$DEV_KEYS_AWS_APP_CONFIG_CONFIGURATION_PROFILE_ID >> .env
+          echo GX_PHONE_NUMBER=$DEV_KEYS_GX_PHONE_NUMBER >> .env
+          echo CARMEL_API_KEY=$DEV_KEYS_CARMEL_API_KEY >> .env
+          echo CARMEL_APP_SECRET=$DEV_KEYS_CARMEL_APP_SECRET >> .env
+          echo AMBASSADOR_API_USERNAME=$DEV_KEYS_AMBASSADOR_API_USERNAME >> .env
+          echo AMBASSADOR_API_TOKEN=$DEV_KEYS_AMBASSADOR_API_TOKEN >> .env
+          echo CONCIERGE_BULK_SQS_QUEUE_URL=$DEV_KEYS_CONCIERGE_BULK_SQS_QUEUE_URL >> .env
+          echo SLACK_BOT_TOKEN=$DEV_KEYS_SLACK_BOT_TOKEN >> .env
+          echo SLACK_SIGNING_SECRET=$DEV_KEYS_SLACK_SIGNING_SECRET >> .env
+          echo CONCIERGE_AGENT_QUEUE_URL=$DEV_KEYS_CONCIERGE_AGENT_QUEUE_URL >> .env
+          cat .env
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
+          docker build -f Dockerfile.production --no-cache -t ${{ env.Env }}-dashboard-api-repository:latest . && docker tag ${{ env.Env }}-dashboard-api-repository:latest ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.Env }}-dashboard-api-repository:latest && docker push ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com/${{ env.Env }}-dashboard-api-repository:latest
+
+      - name: Stop all ECS tasks
+        run: |
+          cluster_name=${{ env.Env }}-dashboard-api-cluster
+          task_arns=$(aws ecs list-tasks --cluster $cluster_name --output json | jq -r '.taskArns[]')
+          for task_arn in $task_arns; do
+            aws ecs stop-task --cluster $cluster_name --task $task_arn
+          done
+
+      - name: ECS update task
+        if: always()
+        run: |
+          aws ecs update-service --force-new-deployment --service ${{ env.Env }}-dashboard-api-service --cluster ${{ env.Env }}-dashboard-api-cluster

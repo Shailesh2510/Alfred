@@ -1,0 +1,38 @@
+name: Run Tests
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test-shared-utils:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./shared/ui
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16.x"
+      - name: Install Node Dependencies
+        run: npm ci
+      - name: Run Tests
+        run: npm run test:cov
+  test-guest-portal-utils:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/guest-portal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16.x"
+      - name: Install Node Dependencies
+        run: npm ci
+      - name: Run Tests
+        run: npm run test:cov

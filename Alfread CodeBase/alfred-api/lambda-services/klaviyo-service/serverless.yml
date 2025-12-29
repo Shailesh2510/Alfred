@@ -1,0 +1,32 @@
+service: klaviyo-service
+frameworkVersion: "3"
+configValidationMode: error
+useDotenv: true
+deprecationNotificationMode: warn:summary
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:sendmessage
+            - secretsmanager:GetSecretValue
+          Resource: "*"
+
+package:
+  patterns:
+    - "!./*"
+    - dist
+    - node_modules
+
+functions:
+  postGuestCheckedInEventToKlaviyo:
+    handler: dist/index.postGuestCheckedInEventToKlaviyo
+    runtime: nodejs20.x
+    timeout: 30
+    environment:
+      STAGE: ${opt:stage, 'dev'}

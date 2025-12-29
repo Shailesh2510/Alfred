@@ -1,0 +1,52 @@
+FROM --platform=linux/amd64 node:16.18-bullseye As build
+# FROM --platform=linux/amd64 node:18-alpine As build
+
+WORKDIR /usr/src/app
+
+COPY --chown=node:node package*.json ./
+
+# In order to run `npm run build` we need access to the Nest CLI which is a dev dependency. In the previous development stage we ran `npm ci` which installed all dependencies, so we can copy over the node_modules directory from the development image
+# COPY --chown=node:node --from=development /usr/src/app/node_modules ./node_modules
+
+COPY --chown=node:node . .
+
+# Running `npm ci` removes the existing node_modules directory and passing in --only=production ensures that only the production dependencies are installed. This ensures that the node_modules directory is as optimized as possible
+# RUN npm ci --only=production && npm cache clean --force
+RUN npm ci
+
+# Run the build command which creates the production bundle
+RUN npm run build
+
+# Set NODE_ENV environment variable
+ENV NODE_ENV dev
+
+USER node
+
+###################
+# PRODUCTION
+###################
+
+FROM --platform=linux/amd64 node:16.18-bullseye As production
+# FROM --platform=linux/amd64 node:18-alpine As production
+
+RUN apt-get update
+RUN apt-get install -y curl
+RUN apt-get install -y vim
+RUN apt-get install -y dnsutils
+
+# Copy the bundled code from the build stage to the production image
+COPY --chown=node:node --from=build /usr/src/app/node_modules ./node_modules
+COPY --chown=node:node --from=build /usr/src/app/dist ./dist
+
+
+COPY .env ./dist/
+
+
+
+EXPOSE 3000
+
+# Start the server using the production build
+WORKDIR ./dist
+CMD ["node" "setupenv.js"]
+CMD ["sleep", "10"]
+CMD ["node", "src/main.js"]
