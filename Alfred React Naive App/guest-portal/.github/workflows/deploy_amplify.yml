@@ -1,0 +1,73 @@
+name: Guest portal deployment
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      Env: ${{ github.event.inputs.env || 'dev' }}
+      NODE_ENV: ${{ github.event.inputs.env == 'prod' && 'production' || 'development' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Load AWS Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        with:
+          secret-ids: |
+            ${{ env.Env }}/encrypted-keys
+          parse-json-secrets: true
+
+      - name: Generate .env file
+        run: |
+          echo "Generating .env file..."
+          touch .env
+          echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env
+          echo "EXPO_PUBLIC_API_BASE_URL=${{ env.EXPO_PUBLIC_API_BASE_URL }}" >> .env
+          echo "EXPO_PUBLIC_S3_BASE_URL=${{ env.EXPO_PUBLIC_S3_BASE_URL }}" >> .env
+          echo "EXPO_PUBLIC_COGNITO_USERPOOL_ID=${{ env.EXPO_PUBLIC_COGNITO_USERPOOL_ID }}" >> .env
+          echo "EXPO_PUBLIC_COGNITO_CLIENT_ID=${{ env.EXPO_PUBLIC_COGNITO_CLIENT_ID }}" >> .env
+          echo "EXPO_PUBLIC_PUSHER_KEY=${{ env.EXPO_PUBLIC_PUSHER_KEY }}" >> .env
+          echo "EXPO_PUBLIC_PUSHER_CLUSTER=${{ env.EXPO_PUBLIC_PUSHER_CLUSTER }}" >> .env
+          echo "EXPO_PUBLIC_STRIPE_KEY=${{ env.EXPO_PUBLIC_STRIPE_KEY }}" >> .env
+          echo "EXPO_PUBLIC_AMBASSADOR_API_USERNAME=${{ env.EXPO_PUBLIC_AMBASSADOR_API_USERNAME }}" >> .env
+          echo "EXPO_PUBLIC_AMBASSADOR_API_TOKEN=${{ env.EXPO_PUBLIC_AMBASSADOR_API_TOKEN }}" >> .env
+          echo "EXPO_PUBLIC_AWS_APP_CONFIG_ENVIRONMENT_ID=${{ env.EXPO_PUBLIC_AWS_APP_CONFIG_ENVIRONMENT_ID }}" >> .env
+          echo "EXPO_PUBLIC_AWS_APP_CONFIG_APPLICATION_ID=${{ env.EXPO_PUBLIC_AWS_APP_CONFIG_APPLICATION_ID }}" >> .env
+          echo "EXPO_PUBLIC_AWS_APP_CONFIG_CONFIGURATION_PROFILE_ID=${{ env.EXPO_PUBLIC_AWS_APP_CONFIG_CONFIGURATION_PROFILE_ID }}" >> .env
+          echo "EXPO_PUBLIC_AWS_ACCESS_KEY_ID=${{ env.EXPO_PUBLIC_AWS_ACCESS_KEY_ID }}" >> .env
+          echo "EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY=${{ env.EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "EXPO_PUBLIC_API_KEY=${{ env.EXPO_PUBLIC_API_KEY }}" >> .env
+          cat .env
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Expo Project
+        run: npm run export:${{ env.Env }}
+
+      - name: Deploy to AWS Amplify
+        run: |
+          echo "Starting deployment to AWS Amplify..."
+          aws amplify start-job --app-id ${{ secrets.AMPLIFY_APP_ID }} --branch-name develop --job-type RELEASE

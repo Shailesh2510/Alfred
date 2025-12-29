@@ -1,0 +1,100 @@
+name: Concierge Agent CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  deploy:
+    env:
+      ENV: ${{ github.event.inputs.env || 'dev' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Load AWS Secrets Manager secrets
+      - name: Load AWS secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        with:
+          secret-ids: |
+            DEV_KEYS, ${{ env.ENV }}/encrypted-keys
+            DEV_DB, ${{ env.ENV }}/encrypted-db
+          parse-json-secrets: true
+
+      # Build and push Docker image to ECR
+      - name: Build and push Docker image
+        working-directory: ./src
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          ECR_REPOSITORY: ${{ env.ENV }}-concierge-workflow
+          IMAGE_TAG: latest
+        run: |
+          # Create .env file with secrets
+          touch .env
+          echo "OPENAI_API_KEY=$DEV_KEYS_OPENAI_API_KEY" >> .env
+          echo "SLACK_APP_TOKEN=$DEV_KEYS_SLACK_APP_TOKEN" >> .env
+          echo "SLACK_BOT_TOKEN=$DEV_KEYS_SLACK_BOT_TOKEN" >> .env
+          echo "SLACK_SIGNING_SECRET=$DEV_KEYS_SLACK_SIGNING_SECRET" >> .env
+          echo "SLACK_CHANNEL_ID=$DEV_KEYS_SLACK_CHANNEL_ID" >> .env
+          echo "DB_TYPE=$DEV_DB_ENGINE" >> .env
+          echo "DB_HOST=$DEV_DB_HOST" >> .env
+          echo "DB_PORT=$DEV_DB_PORT" >> .env
+          echo "DB_USERNAME=$DEV_DB_USERNAME" >> .env
+          echo "DB_PASSWORD=$DEV_DB_PASSWORD" >> .env
+          echo "DB_DATABASE=$DEV_DB_DBNAME" >> .env
+          echo "API_TOKEN=$DEV_KEYS_API_TOKEN" >> .env
+          echo "API_BASE_URL=$DEV_KEYS_API_BASE_URL" >> .env
+          echo "BASE_URL=$DEV_KEYS_BASE_URL" >> .env
+          echo "TAVILY_API_KEY=$DEV_KEYS_TAVILY_API_KEY" >> .env
+          echo "SQS_QUEUE_URL=$DEV_KEYS_SQS_QUEUE_URL" >> .env
+          echo "AWS_REGION=$DEV_KEYS_AWS_REGION" >> .env
+          echo "LANGFUSE_PUBLIC_KEY=$DEV_KEYS_LANGFUSE_PUBLIC_KEY" >> .env
+          echo "LANGFUSE_SECRET_KEY=$DEV_KEYS_LANGFUSE_SECRET_KEY" >> .env
+          echo "LANGFUSE_HOST=$DEV_KEYS_LANGFUSE_HOST" >> .env
+          cat .env  # Debug: show .env contents
+
+          # Login to ECR
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+          # Build, tag, and push
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # Update ECS service
+      - name: Update ECS service
+        if: always()
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ENV }}-dashboard-api-cluster \
+            --service ${{ env.ENV }}-concierge-service \
+            --task-definition ${{ env.ENV }}-concierge-workflow-task \
+            --force-new-deployment \
+            --region ${{ secrets.AWS_REGION }}

@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Workflow (Debug)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/workflow.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/src/.env",
+      "justMyCode": false,
+      "pythonPath": "${workspaceFolder}/src/.venv/Scripts/python.exe",
+      "args": [
+        "--local",
+        "--session_id",
+        "R@25",
+        "--user_input",
+        // "Can you help me with ride booking from JFK to my hotel?",
+        // "JK123",
+        "Yes, please book it",
+        // "Full size sedan",
+        // "I've aready provided the flight number",
+        // "Time will be 3 pm and flight number is 12112",
+        // "Checkin date is fine, time will be 4 pm. Fligh number 12112 and you have got the right hotel name",
+        // "I need to change my pickup time to 6:30pm and date will be 15 may",
+        "--guest_metadata",
+        "{ \\\"name\\\": \\\"New Guest\\\", \\\"checkInDate\\\": \\\"2025-05-02\\\", \\\"checkOutDate\\\": \\\"2025-05-05\\\", \\\"hotelWebCode\\\": \\\"H57\\\", \\\"hotelName\\\": \\\"Hotel 57 by LuxUrban\\\", \\\"email\\\": \\\"guest@example.com\\\", \\\"lastMessage\\\": \\\"Your booking has been confirmed.\\\", \\\"phoneNumber\\\": \\\"Test phone number\\\" }"
+      ]
+    }
+  ]
+}

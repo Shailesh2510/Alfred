@@ -1,0 +1,31 @@
+{
+	"extends": "expo/tsconfig.base",
+	"compilerOptions": {
+		"strict": true,
+		"jsx": "react-native",
+		"jsxImportSource": "react",
+		"paths": {
+			"@/*": ["./*"],
+			"@components/*": ["./src/components/*"],
+			"@icons/*": ["./src/components/ui/icons/*"],
+			"@images/*": ["./src/components/ui/images/*"],
+			"@context/*": ["./src/context/*"],
+			"@hooks/*": ["./src/hooks/*"],
+			"@screens/*": ["./src/screens/*"],
+			"@lib/*": ["./src/lib/*"],
+			"@store/*": ["./src/store/*"],
+			"@types/*": ["./src/types/*"],
+			"@utils/*": ["./src/utils/*"],
+			"@constants/*": ["./src/utils/constants/*"],
+			"@assets/*": ["./assets/*"]
+		}
+	},
+	"include": [
+		"**/*.ts",
+		"**/*.tsx",
+		".expo/types/**/*.ts",
+		"expo-env.d.ts",
+		"nativewind-env.d.ts",
+		"public/service-worker.js"
+	]
+}

@@ -1,0 +1,10 @@
+
+services:
+  concierge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: concierge-agent
+    env_file:
+      - .env
+    restart: unless-stopped

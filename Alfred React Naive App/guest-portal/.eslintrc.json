@@ -1,0 +1,156 @@
+{
+	"root": true,
+	"extends": [
+		"eslint:recommended",
+		"plugin:@typescript-eslint/recommended",
+		"plugin:react/recommended",
+		"plugin:react-native/all",
+		"plugin:unicorn/recommended",
+		"plugin:prettier/recommended",
+		"prettier"
+	],
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 2020,
+		"sourceType": "module",
+		"project": "./tsconfig.json"
+	},
+	"plugins": [
+		"@typescript-eslint",
+		"react",
+		"react-native",
+		"unicorn",
+		"prettier"
+	],
+	"env": {
+		"node": true,
+		"browser": true,
+		"es6": true,
+		"react-native/react-native": true
+	},
+	"rules": {
+		// General Best Practices
+		"no-console": "warn", // Warn on console usage
+		"no-debugger": "warn", // Warn on debugger usage
+		"no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Warn on unused variables, ignoring leading underscores
+		"no-empty-function": "warn", // Warn on empty functions
+		"prefer-const": "warn", // Prefer const over let
+		"consistent-return": "warn", // Ensure return statements are consistent
+		"eqeqeq": "warn", // Use === and !== instead of == and !=
+		"no-magic-numbers": ["warn", { "ignore": [0, 1] }], // Warn on magic numbers except 0 and 1
+		"no-restricted-syntax": [
+			"warn",
+			{
+				"selector": "ForInStatement",
+				"message": "Use Object.{keys,values,entries} for iteration over objects instead of for..in."
+			},
+			{
+				"selector": "LabeledStatement",
+				"message": "Labels are a form of GOTO, using them makes code confusing and hard to maintain."
+			},
+			{
+				"selector": "WithStatement",
+				"message": "`with` is disallowed in strict mode because it makes code unpredictable."
+			}
+		],
+
+		// TypeScript Rules
+		"@typescript-eslint/no-explicit-any": "warn", // Avoid 'any' type unless necessary
+		"@typescript-eslint/no-unused-vars": [
+			"warn",
+			{ "argsIgnorePattern": "^_" }
+		], // Avoid unused vars
+		"@typescript-eslint/explicit-module-boundary-types": "off", // Allow implicit return types for now
+		"@typescript-eslint/member-ordering": [
+			"warn",
+			{
+				// Enforce member order for readability
+				"default": [
+					"public-static-field",
+					"public-instance-field",
+					"constructor",
+					"public-method",
+					"private-method",
+					"private-static-method"
+				]
+			}
+		],
+		"@typescript-eslint/explicit-function-return-type": [
+			"warn",
+			{ "allowExpressions": true }
+		], // Recommend return type annotations
+
+		// React Rules
+		"react/prop-types": "off", // Disable prop-types as TypeScript handles types
+		"react/react-in-jsx-scope": "off", // React 17+ doesn't require React to be in scope
+		"react/jsx-uses-react": "off", // React 17+ doesn't need to be used in JSX
+		"react/jsx-uses-vars": "warn", // Prevent unused variables in JSX
+		"react/jsx-no-duplicate-props": "warn", // Prevent duplicate JSX props
+		"react/jsx-key": "warn", // Ensure each JSX element has a unique 'key' prop
+		"react/jsx-no-bind": [
+			"warn",
+			{
+				"ignoreRefs": false,
+				"allowArrowFunctions": true,
+				"allowFunctions": true,
+				"allowBind": false
+			}
+		],
+
+		// React Rules
+		"react/prop-types": "off", // Disable prop-types as TypeScript handles types
+		"react/react-in-jsx-scope": "off", // React 17+ doesn't require React to be in scope
+		"react/jsx-uses-react": "off", // React 17+ doesn't need to be used in JSX
+		"react/jsx-uses-vars": "error", // Prevent unused variables in JSX
+		"react/jsx-no-duplicate-props": "error", // Prevent duplicate JSX props
+		"react/jsx-key": "error", // Ensure each JSX element has a unique 'key' prop
+		"react/jsx-no-bind": [
+			"error",
+			{
+				"ignoreRefs": false,
+				"allowArrowFunctions": true,
+				"allowFunctions": true,
+				"allowBind": false
+			}
+		],
+
+		// React Native Rules
+		"react-native/no-inline-styles": "warn", // Warn on inline styles in JSX
+		"react-native/no-unused-styles": "warn", // Warn on unused styles
+		"react-native/split-platform-components": "warn", // Split platform-specific components for better structure
+
+		// Unicorn Rules (for enhanced best practices)
+		"unicorn/filename-case": [
+			"error",
+			{
+				"cases": {
+					"camelCase": true,
+					"pascalCase": true,
+					"kebabCase": true
+				}
+			}
+		],
+		"unicorn/no-nested-ternary": "error", // Avoid nested ternary operators for better readability
+		"unicorn/prevent-abbreviations": "warn", // Avoid abbreviations for better readability
+		"unicorn/no-null": "off", // Allow `null` as a valid value
+		"unicorn/consistent-function-scoping": "error", // Ensure functions are consistently scoped
+
+		// Prettier Integration
+		"prettier/prettier": [
+			"error",
+			{
+				"arrowParens": "avoid",
+				"bracketSameLine": false,
+				"bracketSpacing": true,
+				"jsxSingleQuote": true,
+				"printWidth": 80,
+				"quoteProps": "as-needed",
+				"semi": false,
+				"singleQuote": true,
+				"tabWidth": 2,
+				"trailingComma": "none",
+				"useTabs": true
+			}
+		]
+	}
+}
